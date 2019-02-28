@@ -1,8 +1,10 @@
 #!/bin/sh
 
-
+#
 # add a common user
-addgroup -S sysadms && adduser -S sysadm -G sysadms
+#
+addgroup -S sysadms
+adduser -S sysadm -G sysadms
 passwd sysadm
 # enter password twice
 
