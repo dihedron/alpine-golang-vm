@@ -19,13 +19,17 @@ In order to install a new Alpine Linux VM, you need to:
    1. for Italy, choose `it`, then again `it` as keyboard layout and sub-layout; then choose `CET` for the timezone
    2. choose `sda` as the drive to install to, and `sys` (meaning persistent, full system) as the install type.
 
-During the install process you will be requested to change `root`'s password; any password (including `password`) will do, even if it's too weak.
+During the install process you will be requested to change `root`'s password; any password (including `password`) will do, but in order for the machine to be a valid Vagrant Base Box, `root`'s password must be `vagrant`.
 
-Once the machine is up and running, go the VirtualBox GUI and remove the ISO image from the CD-ROM, then on VirtualBox's GUI, menu **Machine**, send an `ACPI Shutdown` to halt it.
+Once the machine is up and running, go the VirtualBox GUI and remove the ISO image from the CD-ROM, then on VirtualBox's GUI, menu `Machine`, send an `ACPI Shutdown` to halt it, or at the command prompt type
 
-Take a snapshot before you start messing around with it.
+```bash
+$> poweroff
+```
 
-In order to restart the machine from the persistent disk, run `reboot` at the guest's prompt.
+Take a snapshot before you start installing stuff, just in case...
+
+`reboot` restarts the machine; `poweroff` shuts it down by sending an ACPI signal, `halt` stops the CPU (without powering down).
 
 ## Enable `root` access via SSH
 
@@ -38,6 +42,7 @@ In order to enable SSH access to the `root` user:
 ```bash
 $> /etc/init.d/sshd restart
 ```
+
  and then check its status with
 
  ```bash
@@ -50,24 +55,92 @@ $> /etc/init.d/sshd restart
  $> ssh -p 2222 root@localhost
  ```
 
-## Install guest additions
+## Install VirtualBox guest additions
 
 This step is required to create a Hashicorp Vagrant base image; for details, see [here](https://www.vagrantup.com/docs/virtualbox/boxes.html).
 
-In order to setup VirtualBox Guest Additions, you must:
+In order to setup VirtualBox Guest Additions, you must edit the Alpine Linux's package manager's configuration file, `/etc/apk/repositories`, to include the `community` packages. To do so, simply edit the file and make sure that the `community` is uncommented:
 
-TODO: check how to installl VBoxGuestAdditions from APK repo.
-
-1. log on to the guest and run the following script:
-
-```bash
-#!/bin/sh
-wget -O VBoxGuestAdditions.iso https://download.virtualbox.org/virtualbox/6.0.4/VBoxGuestAdditions_6.0.4.iso
-mkdir /media/VBoxGuestAdditions
-mount -t iso9660 -o ro,loop VBoxGuestAdditions.iso /media/VBoxGuestAdditions
-sh /media/VBoxGuestAdditions/VBoxLinuxAdditions.run
-rm VBoxGuestAdditions.iso
-umount /media/VBoxGuestAdditions
-rmdir /media/VBoxGuestAdditions
+```
+  #/media/cdrom/apks
+  http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.9/main
+- #http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.9/community
++ http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.9/community
+  #http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/edge/main
+  #http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/edge/community
+  #http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/edge/testing
 ```
 
+then update the packages and proceed to installation:
+
+```bash
+$> apk update
+$> apk add virtualbox-guest-additions virtualbox-guest-modules-virt
+```
+
+then reboot the system:
+
+```bash
+$> reboot
+```
+
+an when it starts up again, install the module:
+
+```bash
+$> modprobe -a vboxsf
+```
+
+Now you can open the `Devices > Shared Folders > Shared olders Settings` menu on the VirtualBox GUI and define one or more shared folders; suppose you want to mount your host's `/path/to/my/data` folder as the guest's `/mnt/outside`, you select the host's path (`/path/to/my/data`), give a symbolic name to the shared folder (e.g. `Data`), and specify that you want it mounted as `permanent`, `auto-mount`ed at boot in `read/write` mode, then provide the `/mnt/outside` path as the mountpoint.
+
+Then at the guest's CLI you type:
+
+```bash
+$> mount -t vboxsf <Shared Folder Name> <Guest Mountpoint>
+```
+
+e.g.
+
+```bash
+$> mount -t vboxsf Data /mnt/outside
+```
+
+and the host's `Data` folder, which is `path/to/my/data`, will be available in read/write mode under the guest's `mnt/outside`.
+
+That's it!
+
+## Fulfill the other Vagrant Base Box requirements
+
+In order for the machine to be a valid Vagrant Base Box (see [here](https://www.vagrantup.com/docs/boxes/base.html) for details), it needs to:
+
+1. install package `sudo` and enable the `wheel` group (the sudoers)
+
+```bash
+$> apk install sudo
+$> sed -e 's/# %wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) NOPASSWD: ALL/g' -i /etc/sudoers
+```
+
+2. have a valid `vagrant` user, with `vagrant` password
+
+```bash
+$> adduser -S vagrant -s /bin/ash -G wheel
+$> passwd vagrant
+Type password: *******
+Re-type password: *******
+```
+
+2. have a set of insecure pre-defined keys for automatic logon of the `vagrant` user, which can be downloaded from [here](https://raw.githubusercontent.com/hashicorp/vagrant/master/keys/vagrant.pub); the public key should be downloaded to the Alpine machine and copied into `vagrant`'s home directory:
+
+```bash
+$> mkdir -p /home/vagrant/.ssh/
+$> cat /mn/outside/vagrant.pub >> /home/vagrant/.ssh/authorized_keys
+$> chmod 700 /home/vagrant/.ssh
+$> chmod 600 /home/vagrant/.ssh/authorized_keys
+```
+
+## Package the Alpine Linux Base Box
+
+TODO
+
+## Install the golang toolchain
+
+TODO
