@@ -139,7 +139,13 @@ $> chmod 600 /home/vagrant/.ssh/authorized_keys
 
 ## Package the Alpine Linux Base Box
 
-TODO
+In order to package the VM as a Vagrant Base Box, run
+
+```bash
+$> vagrant package --base <my-virtual-machine>
+```
+
+where `<my-virtual-machine>` is the name of the VirtualBox image.
 
 ## Install the golang toolchain
 
