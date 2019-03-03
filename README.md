@@ -147,6 +147,27 @@ $> vagrant package --base <my-virtual-machine>
 
 where `<my-virtual-machine>` is the name of the VirtualBox image.
 
+## or...
+
+... or you can simply refer to a pre-packaged Alpine Linux Base Image on Hashicorp's cloud:
+
+```ruby 
+Vagrant.configure("2") do |config|
+  config.vm.box = "roboxes/alpine39"
+end
+```
+
+or
+
+
+```ruby
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/alpine39"
+end
+```
+
+For more information see also [the Robox Github page](https://github.com/lavabit/robox)
+
 ## Install the golang toolchain
 
 TODO
